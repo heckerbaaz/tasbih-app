@@ -1,0 +1,65 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Prepare Web Assets Directory
+        run: |
+          mkdir -p www
+          cp index.html www/
+          echo "Web directory prepared"
+
+      - name: Install Capacitor & Dependencies
+        run: |
+          npm install -g @capacitor/cli @capacitor/core @capacitor/android
+          npm install @capacitor/core @capacitor/android
+
+      - name: Initialize Android Platform
+        run: |
+          npx cap init "Tasbih Pro" "com.heckerbaaz.tasbih" --web-dir www
+          npx cap add android
+          npx cap sync android
+
+      - name: Grant Execute Permission to Gradle
+        run: |
+          cd android
+          chmod +x gradlew
+
+      - name: Build Debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Locate & Rename APK
+        run: |
+          mkdir -p output
+          cp android/app/build/outputs/apk/debug/app-debug.apk output/Tasbih-Pro-debug.apk
+
+      - name: Upload APK as Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tasbih-Pro-Android-APK
+          path: output/Tasbih-Pro-debug.apk
+          retention-days: 14
